@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Formula 1</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:            #0a0a0a;
+      --surface:       rgba(255,255,255,0.06);
+      --surface-hover: rgba(255,255,255,0.10);
+      --border:        rgba(255,255,255,0.10);
+      --border-focus:  rgba(255,255,255,0.30);
+      --text-primary:  rgba(255,255,255,0.92);
+      --text-muted:    rgba(255,255,255,0.45);
+      --text-dim:      rgba(255,255,255,0.22);
+      --accent:        rgba(138,180,248,0.85);
+      --f1-red:        #E10600;
+      --pill:          9999px;
+      --safe-top:      env(safe-area-inset-top, 0px);
+      --safe-bot:      env(safe-area-inset-bottom, 0px);
+      --tap-min:       48px;
+    }
+    html { height: 100%; overscroll-behavior-y: none; }
+    body {
+      min-height: 100%; width: 100%; background-color: var(--bg);
+      font-family: 'Inter', system-ui, sans-serif; color: var(--text-primary);
+      -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
+      -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation;
+    }
+    .page, .clock-wrapper, .section-header, .f1-row, .f1-race-card, .next-race-banner {
+      user-select: none; -webkit-user-select: none;
+    }
+
+    @keyframes fadeUp  { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes blink   { 0%,100% { opacity:1; } 50% { opacity:0.15; } }
+    @keyframes pulseRed{ 0%,100%{ box-shadow:0 0 0 0 rgba(225,6,0,0.4); } 50%{ box-shadow:0 0 0 6px rgba(225,6,0,0); } }
+
+    /* ── Top bar ── */
+    #topBar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+      padding: calc(var(--safe-top) + 10px) 16px 10px;
+      display: flex; align-items: center; gap: 12px;
+      background: linear-gradient(to bottom, rgba(10,10,10,0.95), rgba(10,10,10,0.0));
+    }
+    #topBar .title { font-size: 16px; font-weight: 600; }
+    #topBar .title .yr { background: var(--f1-red); color: white; padding: 1px 7px; border-radius: 5px; margin-left: 6px; font-size: 12px; font-weight: bold; }
+
+    #scrollRoot {
+      position: relative; z-index: 2; min-height: 100dvh;
+      padding: calc(var(--safe-top) + 64px) 16px calc(var(--safe-bot) + 40px);
+      -webkit-overflow-scrolling: touch; overflow-anchor: none;
+    }
+    .page { display: flex; flex-direction: column; align-items: center; width: 100%; animation: fadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding: 0 2px; width: 100%; }
+    .section-label { font-size: 10px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--text-dim); }
+
+    /* ── Next Race Banner ── */
+    .next-race-section { width: 100%; animation: fadeUp 0.5s 0.05s cubic-bezier(0.22,1,0.36,1) both; }
+    .next-race-banner {
+      position: relative; overflow: hidden; border-radius: 14px;
+      border: 1px solid rgba(225,6,0,0.35);
+      background: linear-gradient(135deg, rgba(225,6,0,0.11) 0%, rgba(225,6,0,0.04) 60%, rgba(255,255,255,0.02) 100%);
+      padding: 14px 14px; display: flex; flex-direction: column; gap: 10px;
+      cursor: pointer; transition: border-color 0.2s;
+    }
+    .next-race-banner:active { border-color: rgba(225,6,0,0.65); }
+    .next-race-banner::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg, var(--f1-red), transparent); }
+    .nr-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .nr-badge { display: flex; align-items: center; gap: 6px; }
+    .nr-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--f1-red); animation: pulseRed 2s infinite; flex-shrink: 0; }
+    .nr-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--f1-red); font-weight: 600; }
+    .nr-countdown { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted); background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+    .nr-name { font-size: 16px; font-weight: 600; color: var(--text-primary); line-height: 1.2; }
+    .nr-circuit { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+    .nr-times { display: flex; flex-direction: column; gap: 5px; }
+    .nr-session-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 9px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); min-height: 38px; }
+    .nr-session-row.highlight { background: rgba(225,6,0,0.12); border-color: rgba(225,6,0,0.25); }
+    .nr-session-name { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+    .nr-session-row.highlight .nr-session-name { color: var(--text-primary); }
+    .nr-session-ist { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-primary); }
+    .nr-session-date { font-size: 10px; color: var(--text-dim); margin-left: 5px; }
+    .nr-alarm-btn {
+      margin-top: 2px; display: flex; align-items: center; justify-content: center; gap: 6px;
+      min-height: 44px; border-radius: 11px; border: 1px solid rgba(225,6,0,0.30);
+      background: rgba(225,6,0,0.10); color: var(--f1-red); font-size: 13px; font-weight: 500;
+      cursor: pointer;
+    }
+    .nr-alarm-btn:active { background: rgba(225,6,0,0.18); }
+
+    /* ── F1 Section ── */
+    .f1-section { width: 100%; margin-top: 20px; animation: fadeUp 0.5s 0.12s cubic-bezier(0.22,1,0.36,1) both; }
+    .f1-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 14px; min-height: 180px; }
+
+    .f1-tabs { display: flex; gap: 4px; background: rgba(0,0,0,0.25); padding: 4px; border-radius: 12px; width: 100%; }
+    .f1-tab {
+      flex: 1; padding: 9px 4px; border-radius: 8px; border: none;
+      background: transparent; color: var(--text-muted);
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      min-height: var(--tap-min); transition: all 0.2s;
+    }
+    .f1-tab.active { background: var(--f1-red); color: white; }
+
+    .f1-row { border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; align-items: center; padding: 10px 0; gap: 10px; cursor: pointer; }
+    .f1-row:last-child { border: none; }
+    .f1-pos { font-family: 'JetBrains Mono', monospace; width: 26px; font-size: 13px; font-weight: 600; text-align: center; flex-shrink: 0; }
+    .f1-img { width: 32px; height: 32px; border-radius: 50%; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); font-size: 11px; font-weight: 600; }
+    .f1-img img { display: block; }
+    .f1-color { width: 3px; height: 24px; border-radius: 2px; flex-shrink: 0; }
+    .f1-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .f1-name { font-size: 12px; font-weight: 500; color: var(--text-primary); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .f1-sub { font-size: 10px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .f1-pts { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-primary); text-align: right; min-width: 40px; flex-shrink: 0; }
+    .f1-pin-btn { flex-shrink: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-size: 15px; }
+    .f1-pin-btn.pinned { color: #FFD700; }
+
+    .f1-race-grid { display: flex; flex-direction: column; gap: 8px; }
+    .f1-race-card {
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 14px; cursor: pointer;
+      transition: background 0.15s; display: flex; flex-direction: column; gap: 3px;
+    }
+    .f1-race-card:active { background: var(--surface-hover); }
+    .f1-race-card.completed { border-left: 3px solid var(--f1-red); }
+    .f1-race-card.next-up { border-color: rgba(225,6,0,0.50); background: rgba(225,6,0,0.07); }
+    .f1-race-card-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .f1-race-card-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+    .f1-race-card-right { flex-shrink: 0; text-align: right; display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
+    .f1-round { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+    .f1-race-name-text { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+    .f1-race-country { font-size: 11px; color: var(--text-muted); }
+    .f1-race-winner { font-size: 11px; color: var(--accent); display: flex; align-items: center; gap: 3px; font-weight: 500; }
+    .f1-race-ist { font-size: 10px; color: rgba(225,6,0,0.85); font-family: 'JetBrains Mono', monospace; }
+    .f1-race-date { font-size: 11px; color: var(--text-dim); }
+
+    .f1-header-row { display: flex; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+    .f1-header-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; font-weight: bold; letter-spacing: 0.05em; }
+    .loading-pulse { animation: blink 1.5s infinite; color: var(--text-muted); font-size: 13px; text-align: center; padding: 36px 0; }
+
+    /* ── Driver Detail Sheet ── */
+    .sheet-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+      display: flex; align-items: flex-end; justify-content: center;
+      z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.22s ease;
+    }
+    .sheet-backdrop.open { opacity: 1; pointer-events: all; }
+    .sheet {
+      background: #1a1a1a; border: 1px solid var(--border);
+      border-radius: 22px 22px 0 0; width: 100%; max-height: 88dvh;
+      padding: 18px 16px calc(var(--safe-bot) + 20px);
+      display: flex; flex-direction: column; gap: 13px;
+      transform: translateY(100%); transition: transform 0.28s cubic-bezier(0.22,1,0.36,1);
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
+    }
+    .sheet-backdrop.open .sheet { transform: translateY(0); }
+    .sheet-handle { width: 36px; height: 4px; background: rgba(255,255,255,0.12); border-radius: 2px; margin: 0 auto 6px; flex-shrink: 0; }
+    .dd-header { display: flex; align-items: center; gap: 14px; }
+    .dd-img { width: 64px; height: 64px; border-radius: 16px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 600; }
+    .dd-img img { width: 100%; height: 100%; object-fit: cover; object-position: center 1%; }
+    .dd-name { font-size: 18px; font-weight: 600; }
+    .dd-team { font-size: 13px; color: var(--text-muted); }
+    .dd-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+    .dd-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+    .dd-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 500; }
+    .dd-stat-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; margin-top: 3px; }
+
+    .toast {
+      position: fixed; bottom: calc(var(--safe-bot) + 28px); left: 50%;
+      transform: translateX(-50%) translateY(14px);
+      background: rgba(28,28,28,0.97); border: 1px solid var(--border);
+      color: var(--text-primary); font-size: 13px; padding: 10px 20px; border-radius: var(--pill);
+      opacity: 0; transition: all 0.18s; z-index: 400; pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<div id="topBar">
+  <div class="title">Formula 1 <span class="yr">2026</span></div>
+</div>
+
+<div id="scrollRoot">
+  <main class="page">
+    <section class="next-race-section" id="nextRaceSection" style="display:none;">
+      <div class="section-header"><span class="section-label">Next Race</span></div>
+      <div class="next-race-banner" id="nextRaceBanner">
+        <div class="nr-top">
+          <div class="nr-badge"><div class="nr-dot"></div><span class="nr-label">Upcoming</span></div>
+          <div class="nr-countdown" id="nrCountdown">—</div>
+        </div>
+        <div>
+          <div class="nr-name" id="nrName">—</div>
+          <div class="nr-circuit" id="nrCircuit">—</div>
+        </div>
+        <div class="nr-times" id="nrTimes"></div>
+        <button class="nr-alarm-btn" id="nrAlarmBtn">⏰ Set Race Alarm</button>
+      </div>
+    </section>
+
+    <section class="f1-section">
+      <div class="section-header">
+        <span class="section-label">Standings & Calendar</span>
+      </div>
+      <div class="f1-card" id="f1Content">
+        <div class="f1-tabs">
+          <button class="f1-tab active" data-tab="drivers">Drivers</button>
+          <button class="f1-tab" data-tab="constructors">Constructors</button>
+          <button class="f1-tab" data-tab="races">Races</button>
+        </div>
+        <div id="f1TabContent"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Driver Detail Sheet -->
+<div class="sheet-backdrop" id="ddBackdrop">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="dd-header">
+      <div class="dd-img" id="ddImg"></div>
+      <div>
+        <div class="dd-name" id="ddName">—</div>
+        <div class="dd-team" id="ddTeam">—</div>
+      </div>
+    </div>
+    <div class="dd-stats">
+      <div class="dd-stat"><div class="dd-stat-val" id="ddPos">—</div><div class="dd-stat-label">Position</div></div>
+      <div class="dd-stat"><div class="dd-stat-val" id="ddPoints">—</div><div class="dd-stat-label">Points</div></div>
+      <div class="dd-stat"><div class="dd-stat-val" id="ddWins">—</div><div class="dd-stat-label">Wins</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const showToast = msg => { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2200); };
+
+  /* ── Sheets ── */
+  const openSheet = b => b.classList.add('open');
+  const closeSheet = b => b.classList.remove('open');
+  (() => {
+    const b = document.getElementById('ddBackdrop'), s = b.querySelector('.sheet');
+    b.addEventListener('click', e => { if (e.target === b) closeSheet(b); });
+    let startY = 0;
+    s.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, {passive:true});
+    s.addEventListener('touchmove', e => {
+      const dy = e.touches[0].clientY - startY;
+      if (dy > 0 && s.scrollTop === 0) s.style.transform = `translateY(${dy}px)`;
+    }, {passive:true});
+    s.addEventListener('touchend', e => {
+      const dy = e.changedTouches[0].clientY - startY;
+      s.style.transform = '';
+      if (dy > 90) closeSheet(b);
+    }, {passive:true});
+  })();
+
+  /* ── IST Helpers ── */
+  const utcToIST = (dateStr, timeStr) => {
+    const iso = timeStr ? `${dateStr}T${timeStr}` : `${dateStr}T00:00:00Z`;
+    return new Date(new Date(iso).getTime() + 5.5*3600000);
+  };
+  const fmtIST = d => d.toLocaleTimeString('en-IN',{ hour:'2-digit', minute:'2-digit', hour12:true, timeZone:'UTC' });
+  const fmtDateShort = d => d.toLocaleDateString('en-IN',{ weekday:'short', day:'numeric', month:'short', timeZone:'UTC' });
+  const fmtCountdown = ms => {
+    if(ms<=0) return 'Now';
+    const d=Math.floor(ms/86400000), h=Math.floor((ms%86400000)/3600000), m=Math.floor((ms%3600000)/60000);
+    if(d>0) return `${d}d ${h}h`;
+    if(h>0) return `${h}h ${m}m`;
+    return `${m}m`;
+  };
+
+  setInterval(()=>{
+    if(window._nextRaceUTC){
+      const ms = window._nextRaceUTC - Date.now();
+      const el = document.getElementById('nrCountdown');
+      if(el) el.textContent = ms>0 ? fmtCountdown(ms) : 'Underway 🏁';
+    }
+  },1000);
+
+  /* ── F1 Data ── */
+  const TEAM_COLORS = {
+    red_bull:'#3671C6', ferrari:'#E8002D', mercedes:'#27F4D2',
+    mclaren:'#FF8000', aston_martin:'#229971', alpine:'#FF87BC',
+    williams:'#64C4FF', haas:'#B6BABD', audi:'#F50505',
+    sauber:'#52E252', rb:'#6692FF', racing_bulls:'#6692FF', cadillac:'#FFD700'
+  };
+  const getContrastText = hex => {
+    if(!hex) return '#fff';
+    const c=hex.replace('#','');
+    const r=parseInt(c.substring(0,2),16),g=parseInt(c.substring(2,4),16),b=parseInt(c.substring(4,6),16);
+    return (r*299+g*587+b*114)/1000>=150?'#111':'#fff';
+  };
+  const driverInitials=(given,family)=>((given||'')[0]||'').toUpperCase()+((family||'')[0]||'').toUpperCase()||'?';
+
+  const DRIVER_IMAGES = {
+    "ANTONELLI":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/mercedes/andant01/2026mercedesandant01right.webp",
+    "HAMILTON":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/ferrari/lewham01/2026ferrarilewham01right.webp",
+    "RUSSELL":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/mercedes/georus01/2026mercedesgeorus01right.webp",
+    "LECLERC":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/ferrari/chalec01/2026ferrarichalec01right.webp",
+    "NORRIS":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/mclaren/lannor01/2026mclarenlannor01right.webp",
+    "PIASTRI":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/mclaren/oscpia01/2026mclarenoscpia01right.webp",
+    "VERSTAPPEN":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/redbullracing/maxver01/2026redbullracingmaxver01right.webp",
+    "GASLY":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/alpine/piegas01/2026alpinepiegas01right.webp",
+    "HADJAR":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/redbullracing/isahad01/2026redbullracingisahad01right.webp",
+    "LAWSON":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/racingbulls/lialaw01/2026racingbullslialaw01right.webp",
+    "BEARMAN":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/haasf1team/olibea01/2026haasf1teamolibea01right.webp",
+    "COLAPINTO":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/alpine/fracol01/2026alpinefracol01right.webp",
+    "LINDBLAD":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/racingbulls/arvlin01/2026racingbullsarvlin01right.webp",
+    "SAINZ":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/williams/carsai01/2026williamscarsai01right.webp",
+    "ALBON":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/williams/alealb01/2026williamsalealb01right.webp",
+    "OCON":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/haasf1team/estoco01/2026haasf1teamestoco01right.webp",
+    "BORTOLETO":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/audi/gabbor01/2026audigabbor01right.webp",
+    "ALONSO":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/astonmartin/feralo01/2026astonmartinferalo01right.webp",
+    "HULKENBERG":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/audi/nichul01/2026audinichul01right.webp",
+    "HÜLKENBERG":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/audi/nichul01/2026audinichul01right.webp",
+    "BOTTAS":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/cadillac/valbot01/2026cadillacvalbot01right.webp",
+    "PEREZ":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/cadillac/serper01/2026cadillacserper01right.webp",
+    "PÉREZ":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/cadillac/serper01/2026cadillacserper01right.webp",
+    "STROLL":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/astonmartin/lanstr01/2026astonmartinlanstr01right.webp"
+  };
+  const TEAM_IMAGES = {
+    "Mercedes":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/mercedes/2026mercedeslogowhite.webp",
+    "Ferrari":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/ferrari/2026ferrarilogowhite.webp",
+    "McLaren":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/mclaren/2026mclarenlogowhite.webp",
+    "Red Bull":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/redbullracing/2026redbullracinglogowhite.webp",
+    "Red Bull Racing":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/redbullracing/2026redbullracinglogowhite.webp",
+    "Alpine F1 Team":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/alpine/2026alpinelogowhite.webp",
+    "RB F1 Team":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/racingbulls/2026racingbullslogowhite.webp",
+    "Haas F1 Team":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/haasf1team/2026haasf1teamlogowhite.webp",
+    "Williams":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/williams/2026williamslogowhite.webp",
+    "Audi":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/audi/2026audilogowhite.webp",
+    "Aston Martin":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/astonmartin/2026astonmartinlogowhite.webp",
+    "Cadillac":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/cadillac/2026cadillaclogowhite.webp",
+    "Cadillac F1 Team":"https://media.formula1.com/image/upload/c_lfill,w_64/q_auto/v1740000001/common/f1/2026/cadillac/2026cadillaclogowhite.webp"
+  };
+
+  const renderF1Img=(imgUrl,initials,bgColor,textColor,pos='center')=>{
+    const safe=initials.replace(/'/g,"&#39;");
+    if(!imgUrl) return `<div class="f1-img" style="background:${bgColor};color:${textColor};">${safe}</div>`;
+    return `<div class="f1-img" style="background:${bgColor};color:${textColor};"><img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;object-position:${pos};" onerror="this.parentElement.textContent='${safe}';this.parentElement.style.background='${bgColor}';this.parentElement.style.color='${textColor}';"></div>`;
+  };
+
+  let f1Cache={standings:null,constructors:null,races:null,results:{}};
+  let f1ActiveTab='drivers';
+  const f1Container=document.getElementById('f1TabContent');
+  let pinnedDriverId = localStorage.getItem('f1_pinned_driver') || null;
+
+  async function fetchF1(endpoint){
+    try{
+      const url=endpoint?`https://api.jolpi.ca/ergast/f1/2026/${endpoint}.json`:`https://api.jolpi.ca/ergast/f1/2026.json`;
+      const res=await fetch(url); if(!res.ok) throw new Error('API Error');
+      return await res.json();
+    }catch(e){console.error(e);return null;}
+  }
+
+  const getPosColor=p=>p==1?'#FFD700':p==2?'#C0C0C0':p==3?'#CD7F32':'var(--text-primary)';
+
+  function openDriverDetail(d){
+    const fam=d.Driver.familyName.toUpperCase();
+    const tc=TEAM_COLORS[d.Constructors[0].constructorId]||'#444';
+    const imgUrl=DRIVER_IMAGES[fam];
+    const initials=driverInitials(d.Driver.givenName,d.Driver.familyName);
+    const imgEl=document.getElementById('ddImg');
+    imgEl.style.background=tc+'33'; imgEl.style.color=getContrastText(tc);
+    imgEl.innerHTML = imgUrl
+      ? `<img src="${imgUrl}" onerror="this.parentElement.textContent='${initials}'">`
+      : initials;
+    document.getElementById('ddName').textContent = `${d.Driver.givenName} ${d.Driver.familyName}`;
+    document.getElementById('ddTeam').textContent = d.Constructors[0].name;
+    document.getElementById('ddPos').textContent = `P${d.position}`;
+    document.getElementById('ddPoints').textContent = d.points;
+    document.getElementById('ddWins').textContent = d.wins;
+    openSheet(document.getElementById('ddBackdrop'));
+  }
+
+  async function renderF1Drivers(){
+    f1Container.innerHTML=`
+      <div class="f1-header-row">
+        <div class="f1-header-label" style="width:26px;text-align:center;">#</div>
+        <div class="f1-header-label" style="flex:1;margin-left:42px;">Driver</div>
+        <div class="f1-header-label" style="width:40px;text-align:right;">Pts</div>
+        <div class="f1-header-label" style="width:28px;"></div>
+      </div>
+      <div id="f1SubContent"><div class="loading-pulse">Fetching…</div></div>`;
+    if(!f1Cache.standings){
+      const data=await fetchF1('driverStandings');
+      f1Cache.standings=data?.MRData?.StandingsTable?.StandingsLists[0]?.DriverStandings||[];
+    }
+    const sub=document.getElementById('f1SubContent');
+    if(!f1Cache.standings.length){sub.innerHTML='<div class="loading-pulse">No data.</div>';return;}
+    let list = [...f1Cache.standings];
+    if (pinnedDriverId) {
+      list.sort((a,b)=> (a.Driver.driverId===pinnedDriverId?-1:0) - (b.Driver.driverId===pinnedDriverId?-1:0));
+    }
+    sub.innerHTML=list.map(d=>{
+      const fam=d.Driver.familyName.toUpperCase();
+      const tc=TEAM_COLORS[d.Constructors[0].constructorId]||'#444';
+      const isPinned = d.Driver.driverId === pinnedDriverId;
+      return `<div class="f1-row" data-driver="${d.Driver.driverId}">
+        <div class="f1-pos" style="color:${getPosColor(d.position)}">${d.position}</div>
+        ${renderF1Img(DRIVER_IMAGES[fam],driverInitials(d.Driver.givenName,d.Driver.familyName),tc+'33',getContrastText(tc),'center 1%')}
+        <div class="f1-color" style="background:${tc}"></div>
+        <div class="f1-info">
+          <div class="f1-name">${d.Driver.givenName} ${fam}</div>
+          <div class="f1-sub">${d.Constructors[0].name}</div>
+        </div>
+        <div class="f1-pts">${d.points}</div>
+        <div class="f1-pin-btn ${isPinned?'pinned':''}" data-pin="${d.Driver.driverId}">★</div>
+      </div>`;
+    }).join('');
+    sub.querySelectorAll('.f1-row').forEach(row=>{
+      const id = row.dataset.driver;
+      row.onclick = (e) => {
+        if (e.target.closest('.f1-pin-btn')) return;
+        const d = f1Cache.standings.find(x=>x.Driver.driverId===id);
+        if (d) openDriverDetail(d);
+      };
+    });
+    sub.querySelectorAll('.f1-pin-btn').forEach(btn=>{
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.pin;
+        pinnedDriverId = (pinnedDriverId===id) ? null : id;
+        if (pinnedDriverId) localStorage.setItem('f1_pinned_driver', pinnedDriverId);
+        else localStorage.removeItem('f1_pinned_driver');
+        showToast(pinnedDriverId ? 'Driver pinned' : 'Unpinned');
+        renderF1Drivers();
+      };
+    });
+  }
+
+  async function renderF1Constructors(){
+    f1Container.innerHTML=`
+      <div class="f1-header-row">
+        <div class="f1-header-label" style="width:26px;text-align:center;">#</div>
+        <div class="f1-header-label" style="flex:1;margin-left:42px;">Team</div>
+        <div class="f1-header-label" style="width:40px;text-align:right;">Pts</div>
+        <div class="f1-header-label" style="width:40px;text-align:right;">Gap</div>
+      </div>
+      <div id="f1SubContent"><div class="loading-pulse">Fetching…</div></div>`;
+    if(!f1Cache.constructors){
+      const data=await fetchF1('constructorStandings');
+      f1Cache.constructors=data?.MRData?.StandingsTable?.StandingsLists[0]?.ConstructorStandings||[];
+    }
+    const sub=document.getElementById('f1SubContent');
+    if(!f1Cache.constructors.length){sub.innerHTML='<div class="loading-pulse">No data.</div>';return;}
+    const lead=parseFloat(f1Cache.constructors[0].points);
+    sub.innerHTML=f1Cache.constructors.map(c=>{
+      const tc=TEAM_COLORS[c.Constructor.constructorId]||'#444';
+      const gap=lead-parseFloat(c.points);
+      return `<div class="f1-row">
+        <div class="f1-pos" style="color:${getPosColor(c.position)}">${c.position}</div>
+        ${renderF1Img(TEAM_IMAGES[c.Constructor.name],c.Constructor.name[0],tc,getContrastText(tc))}
+        <div class="f1-color" style="background:${tc}"></div>
+        <div class="f1-info">
+          <div class="f1-name">${c.Constructor.name}</div>
+          <div class="f1-sub">${c.Constructor.nationality} • ${c.wins} Wins</div>
+        </div>
+        <div class="f1-pts">${c.points}</div>
+        <div class="f1-pts" style="color:var(--text-dim);font-size:10px;width:40px;">${c.position==1?'—':`-${gap.toFixed(0)}`}</div>
+      </div>`;
+    }).join('');
+  }
+
+  window.renderF1Races=async function(){
+    f1Container.innerHTML='<div class="loading-pulse">Fetching Calendar…</div>';
+    if(!f1Cache.races){
+      const[data,res2]=await Promise.all([fetchF1(''),fetchF1('results')]);
+      f1Cache.races=data?.MRData?.RaceTable?.Races||[];
+      (res2?.MRData?.RaceTable?.Races||[]).forEach(r=>{ f1Cache.results[r.round]=r.Results[0]?.Driver?.familyName||null; });
+    }
+    const now=new Date();
+    const nextIdx=f1Cache.races.findIndex(r=>new Date(r.time?`${r.date}T${r.time}`:`${r.date}T00:00:00Z`)>now);
+    f1Container.innerHTML='<div class="f1-race-grid" id="raceGrid"></div>';
+    const g=document.getElementById('raceGrid');
+    g.innerHTML=f1Cache.races.map((r,i)=>{
+      const isPast=new Date(r.date)<now, isNext=i===nextIdx;
+      const winner=f1Cache.results[r.round];
+      const istHtml=r.time?`<div class="f1-race-ist">🕐 ${fmtIST(utcToIST(r.date,r.time))} IST</div>`:'';
+      return `<div class="f1-race-card ${isPast?'completed':''} ${isNext?'next-up':''}" onclick="openRaceDetail(${r.round})">
+        <div class="f1-race-card-inner">
+          <div class="f1-race-card-left">
+            <div class="f1-round">R${r.round}${isNext?' · NEXT':''}</div>
+            <div class="f1-race-name-text">${r.raceName.replace('Grand Prix','GP')}</div>
+            <div class="f1-race-country">${r.Circuit.Location.country}</div>
+            ${winner?`<div class="f1-race-winner">🏆 ${winner}</div>`:''}
+          </div>
+          <div class="f1-race-card-right">
+            <div class="f1-race-date">${new Date(r.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</div>
+            ${istHtml}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  };
+
+  window.openRaceDetail=async round=>{
+    f1Container.innerHTML='<div class="loading-pulse">Loading…</div>';
+    const data=await fetchF1(`${round}/results`);
+    const race=data?.MRData?.RaceTable?.Races[0];
+    if(!race?.Results){
+      f1Container.innerHTML=`<div class="f1-sub" style="text-align:center;padding:20px;">No results yet.</div>
+        <button onclick="renderF1Races()" style="margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:9px;color:var(--text-primary);padding:10px 16px;font-size:13px;cursor:pointer;width:100%;">← Back to Calendar</button>`;
+      return;
+    }
+    const raceTimeStr=race.time?`<div class="f1-sub" style="color:rgba(225,6,0,0.85);">🕐 ${fmtIST(utcToIST(race.date,race.time))} IST · ${fmtDateShort(utcToIST(race.date,race.time))}</div>`:'';
+    f1Container.innerHTML=`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <button id="f1Back" style="background:var(--surface);border:1px solid var(--border);border-radius:9px;color:var(--text-primary);padding:10px 14px;font-size:13px;cursor:pointer;min-height:44px;">← Back</button>
+        <div style="min-width:0;">
+          <div class="f1-name" style="font-size:13px;">${race.raceName}</div>
+          <div class="f1-sub">${race.Circuit.circuitName}</div>
+          ${raceTimeStr}
+        </div>
+      </div>
+      <div class="f1-header-row">
+        <div class="f1-header-label" style="width:26px;text-align:center;">#</div>
+        <div class="f1-header-label" style="flex:1;margin-left:42px;">Driver</div>
+        <div class="f1-header-label" style="width:40px;text-align:right;">Pts</div>
+      </div>
+      <div id="resultsList"></div>`;
+    document.getElementById('f1Back').onclick=renderF1Races;
+    document.getElementById('resultsList').innerHTML=race.Results.map(res=>{
+      const fam=res.Driver.familyName.toUpperCase();
+      const tc=TEAM_COLORS[res.Constructor.constructorId]||'#444';
+      return `<div class="f1-row">
+        <div class="f1-pos" style="color:${getPosColor(res.position)}">${res.position}</div>
+        ${renderF1Img(DRIVER_IMAGES[fam],driverInitials(res.Driver.givenName,res.Driver.familyName),tc+'33',getContrastText(tc),'center 1%')}
+        <div class="f1-color" style="background:${tc}"></div>
+        <div class="f1-info">
+          <div class="f1-name">${res.Driver.givenName} ${fam}</div>
+          <div class="f1-sub">${res.Constructor.name} · ${res.Time?.time||res.status}</div>
+        </div>
+        <div class="f1-pts">${res.points}</div>
+      </div>`;
+    }).join('');
+  };
+
+  const f1Tabs=document.querySelectorAll('.f1-tab');
+  f1Tabs.forEach(tab=>{
+    tab.onclick=()=>{
+      f1Tabs.forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      f1ActiveTab=tab.dataset.tab;
+      if(f1ActiveTab==='drivers') renderF1Drivers();
+      else if(f1ActiveTab==='constructors') renderF1Constructors();
+      else renderF1Races();
+    };
+  });
+
+  /* ── Next Race Banner ── */
+  const SESSION_LABELS=[
+    {key:'FirstPractice',label:'FP1'},{key:'SecondPractice',label:'FP2'},
+    {key:'ThirdPractice',label:'FP3'},{key:'Sprint',label:'Sprint'},
+    {key:'SprintShootout',label:'Sprint Shootout'},{key:'Qualifying',label:'Qualifying'}
+  ];
+  let nextRaceInfo = null;
+
+  async function renderNextRaceBanner(races){
+    const now=new Date();
+    const next=races.find(r=>new Date(r.time?`${r.date}T${r.time}`:`${r.date}T00:00:00Z`)>now);
+    if(!next) return;
+    nextRaceInfo = next;
+    document.getElementById('nextRaceSection').style.display='block';
+    document.getElementById('nrName').textContent=next.raceName;
+    document.getElementById('nrCircuit').textContent=`${next.Circuit.circuitName}, ${next.Circuit.Location.country}`;
+    const raceUTC=new Date(next.time?`${next.date}T${next.time}`:`${next.date}T00:00:00Z`);
+    window._nextRaceUTC=raceUTC.getTime();
+    const sessions=[];
+    SESSION_LABELS.forEach(({key,label})=>{ const s=next[key]; if(s?.date&&s?.time){ sessions.push({label,utc:new Date(`${s.date}T${s.time}`),ist:utcToIST(s.date,s.time),isRace:false}); } });
+    if(next.date&&next.time) sessions.push({label:'Race',utc:raceUTC,ist:utcToIST(next.date,next.time),isRace:true});
+    const filtered=sessions.filter(s=>s.utc>new Date(now-3600000));
+    document.getElementById('nrTimes').innerHTML=filtered.map(s=>`
+      <div class="nr-session-row ${s.isRace?'highlight':''}">
+        <span class="nr-session-name">${s.label}</span>
+        <span><span class="nr-session-ist">${fmtIST(s.ist)}</span><span class="nr-session-date"> ${fmtDateShort(s.ist)}</span></span>
+      </div>`).join('');
+  }
+
+  document.getElementById('nrAlarmBtn').onclick = () => {
+    if (!nextRaceInfo) return;
+    const raceUTC = new Date(nextRaceInfo.time?`${nextRaceInfo.date}T${nextRaceInfo.time}`:`${nextRaceInfo.date}T00:00:00Z`);
+    const istTime = new Date(raceUTC.getTime() + 5.5*3600000);
+    showToast(`Race is ${fmtIST(istTime)} IST on ${fmtDateShort(istTime)} — set an alarm app-side for that time.`);
+  };
+
+  // Eager load race data for banner
+  (async()=>{
+    if(!f1Cache.races){
+      const[data,res2]=await Promise.all([fetchF1(''),fetchF1('results')]);
+      f1Cache.races=data?.MRData?.RaceTable?.Races||[];
+      (res2?.MRData?.RaceTable?.Races||[]).forEach(r=>{ f1Cache.results[r.round]=r.Results[0]?.Driver?.familyName||null; });
+    }
+    if(f1Cache.races.length) renderNextRaceBanner(f1Cache.races);
+  })();
+
+  renderF1Drivers();
+</script>
+</body>
+</html>

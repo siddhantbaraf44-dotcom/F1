@@ -1,1 +1,12 @@
-
+{
+  "name": "whatchu",
+  "short_name": "whatchu",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FAF8F5",
+  "theme_color": "#FAF8F5",
+  "description": "whatchu mobile web app",
+  "icons": []
+}

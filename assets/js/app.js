@@ -1,6 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
 import { getDatabase, ref, push, onValue, remove, set, serverTimestamp, get } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
+const api = window.api;
+const IMG = window.IMG;
+
 const firebaseConfig = {
   apiKey:"AIzaSyDLPyDNPw6g30_9KLYmKEgz26ODXl88IT8",
   authDomain:"myown-c1a03.firebaseapp.com",
@@ -191,15 +194,6 @@ const noAv=`data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='
 const noThumb=`data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='44'%3E%3Crect width='70' height='44' fill='%23EDE8E0'/%3E%3Cpolygon points='28,14 28,30 46,22' fill='%238B6914' opacity='.6'/%3E%3C/svg%3E`;
 const noPoster=`data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='98' height='147'%3E%3Crect width='98' height='147' fill='%23EDE8E0'/%3E%3Ctext x='49' y='80' text-anchor='middle' font-size='32' fill='%23C4AC8C'%3E🎬%3C/text%3E%3C/svg%3E`;
 
-async function api(ep,params={}){
-  const u=new URL(`${BASE}${ep}`);
-  u.searchParams.set('api_key',API_KEY);
-  Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
-  const r=await fetch(u.toString());
-  if(!r.ok) throw new Error(`TMDB ${r.status}`);
-  return r.json();
-}
-
 const imgUrl=(p,s='w342')=>p?`${IMG}${s}${p}`:null;
 const money=n=>!n?'N/A':n>=1e9?`$${(n/1e9).toFixed(2)}B`:n>=1e6?`$${(n/1e6).toFixed(1)}M`:`$${n.toLocaleString()}`;
 const fmtDate=d=>{if(!d)return'N/A';const dt=new Date(d);return isNaN(dt)?'N/A':dt.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});};
@@ -289,13 +283,13 @@ window.saveUid=saveUid;
 /* =================== SHARE =================== */
 function shareDetail(id,type,title){
   const url=`${SITE_URL}/#detail/${type}/${id}`;
-  if(navigator.share){navigator.share({title,text:`Check out "${title}" on whatchu!`,url}).catch(()=>{});}
+  if(navigator.share){navigator.share({title,text:`Check out "${title}" on justwatchh!`,url}).catch(()=>{});}
   else{navigator.clipboard&&navigator.clipboard.writeText(url).then(()=>showToast('Link copied!'));}
 }
 function sharePlaylist(ownerUid,plId,plName,e){
   if(e)e.stopPropagation();
   const url=`${SITE_URL}/#playlist/${ownerUid}/${plId}`;
-  if(navigator.share){navigator.share({title:plName,text:`Check out my playlist "${plName}" on whatchu!`,url}).catch(()=>{});}
+  if(navigator.share){navigator.share({title:plName,text:`Check out my playlist "${plName}" on justwatchh!`,url}).catch(()=>{});}
   else{navigator.clipboard&&navigator.clipboard.writeText(url).then(()=>showToast('Playlist link copied!'));}
 }
 

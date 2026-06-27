@@ -1,1 +1,12 @@
 
+# Local env and secrets
+.env
+.env.*
+
+# Runtime config overrides containing secrets
+assets/js/config.local.js
+assets/js/config.prod.js
+
+# OS/editor
+.DS_Store
+Thumbs.db

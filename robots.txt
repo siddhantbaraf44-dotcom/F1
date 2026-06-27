@@ -1,1 +1,4 @@
+User-agent: *
+Allow: /
+Sitemap: https://whatchu.netlify.app/sitemap.xml
 

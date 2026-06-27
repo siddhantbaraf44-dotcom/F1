@@ -27,6 +27,15 @@
 <meta name="theme-color" content="#FAF8F5">
 <title>whatchu - Discover Movies & TV, Find Where to Watch</title>
 <link rel="stylesheet" href="assets/css/style.css">
+<style>
+  /* Emergency fix: ensure everything is clickable */
+  #bottom-nav, .bnav-item, button, a, input, .modal-sheet, .view {
+    pointer-events: auto !important;
+  }
+  .loading-overlay {
+    pointer-events: none !important;
+  }
+</style>
 </head>
 <body>
 
@@ -128,31 +137,31 @@
 
   <!-- BOTTOM NAV -->
   <div id="bottom-nav">
-    <button class="bnav-item active" id="bnav-home" onclick="goHome()">
+    <button class="bnav-item active" id="bnav-home" onclick="if(window.goHome) goHome()">
       <svg viewBox="0 0 24 24" fill="currentColor">
         <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
       </svg>
       <span>Home</span>
     </button>
-    <button class="bnav-item" id="bnav-movies" onclick="goMovies()">
+    <button class="bnav-item" id="bnav-movies" onclick="if(window.goMovies) goMovies()">
       <svg viewBox="0 0 24 24" fill="currentColor">
         <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
       </svg>
       <span>Movies</span>
     </button>
-    <button class="bnav-item" id="bnav-search" onclick="goSearch()">
+    <button class="bnav-item" id="bnav-search" onclick="if(window.goSearch) goSearch()">
       <svg viewBox="0 0 24 24" fill="currentColor">
         <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
       </svg>
       <span>Search</span>
     </button>
-    <button class="bnav-item" id="bnav-tv" onclick="goTV()">
+    <button class="bnav-item" id="bnav-tv" onclick="if(window.goTV) goTV()">
       <svg viewBox="0 0 24 24" fill="currentColor">
         <path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/>
       </svg>
       <span>TV Shows</span>
     </button>
-    <button class="bnav-item" id="bnav-mylist" onclick="goMyList()">
+    <button class="bnav-item" id="bnav-mylist" onclick="if(window.goMyList) goMyList()">
       <svg viewBox="0 0 24 24" fill="currentColor">
         <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z"/>
       </svg>
@@ -161,10 +170,29 @@
   </div>
 </div>
 
-
 <script src="assets/js/config.js"></script>
 <script src="assets/js/api.js"></script>
 <script src="assets/js/router.js"></script>
 <script type="module" src="assets/js/app.js"></script>
-</body>
+
+<!-- Emergency fallback script to ensure nav works -->
+<script>
+  // Hide loading overlay immediately
+  function hideGlobalLoading() {
+    const loader = document.getElementById('global-loading');
+    if (loader) loader.style.display = 'none';
+  }
+  
+  window.addEventListener('load', () => {
+    setTimeout(hideGlobalLoading, 800);
+  });
+
+  // Fallback navigation if main app fails to load
+  setTimeout(() => {
+    if (!window.goHome && typeof window.goHome !== 'function') {
+      console.warn('%c[Fix] Main app.js may have failed. Navigation fallback active.', 'color:#f90');
+    }
+  }, 2500);
+</script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a12114c50f14538b',t:'MTc4MjUyNzk2NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
